@@ -20,23 +20,23 @@ import java.util.Locale;
 import java.util.Map;
 
 public final class ClickGuiScreen extends Screen {
-	private static final int GUI_WIDTH = 900;
-	private static final int GUI_HEIGHT = 600;
-	private static final int SIDEBAR_WIDTH = 250;
-	private static final int CONTENT_GAP = 22;
-	private static final int HEADER_HEIGHT = 86;
-	private static final int MODULE_WIDTH = 286;
-	private static final int MODULE_BASE_HEIGHT = 72;
-	private static final int MODULE_EXPANDED_HEIGHT = 118;
-	private static final int MODULE_GAP = 16;
-	private static final int BACKDROP = 0xA8000000;
-	private static final int GLASS = 0x8F4A4A4A;
-	private static final int GLASS_LIGHT = 0x9E5A5A5A;
-	private static final int GLASS_DARK = 0x902A2A2A;
-	private static final int OUTLINE = 0x78777777;
+	private static final int GUI_WIDTH = 560;
+	private static final int GUI_HEIGHT = 520;
+	private static final int SIDEBAR_WIDTH = 152;
+	private static final int CONTENT_GAP = 14;
+	private static final int HEADER_HEIGHT = 72;
+	private static final int MODULE_WIDTH = 168;
+	private static final int MODULE_BASE_HEIGHT = 66;
+	private static final int MODULE_EXPANDED_HEIGHT = 108;
+	private static final int MODULE_GAP = 12;
+	private static final int BACKDROP = 0x52000000;
+	private static final int GLASS = 0xEA08080B;
+	private static final int GLASS_LIGHT = 0xFF17171D;
+	private static final int GLASS_DARK = 0xF20D0D11;
+	private static final int OUTLINE = 0x705A5A60;
 	private static final int TEXT = 0xFFFFFFFF;
 	private static final int MUTED = 0xFFB8B8B8;
-	private static final int DIM = 0xFF777777;
+	private static final int DIM = 0xFF727278;
 	private static final int ACCENT = 0xFF8E7BFF;
 	private static final int ACCENT_2 = 0xFF54D6FF;
 	private static final int SUCCESS = 0xFF65FFB5;
@@ -89,37 +89,43 @@ public final class ClickGuiScreen extends Screen {
 	public boolean mouseClicked(double mouseX, double mouseY, int button) {
 		int x = (width - GUI_WIDTH) / 2;
 		int y = (height - GUI_HEIGHT) / 2;
-		if (button == 0 && Render2D.hovered(mouseX, mouseY, x + 18, y + 72, SIDEBAR_WIDTH - 36, 30)) {
+		if (button == 0 && Render2D.hovered(mouseX, mouseY, x + 12, y + 66, SIDEBAR_WIDTH - 24, 28)) {
 			searchFocused = true;
 			bindingModule = null;
 			return true;
 		}
 		searchFocused = false;
 
-		int categoryY = y + 120;
+		int categoryY = y + 112;
 		for (Category category : Category.values()) {
-			if (Render2D.hovered(mouseX, mouseY, x + 10, categoryY, SIDEBAR_WIDTH - 20, 45)) {
+			if (Render2D.hovered(mouseX, mouseY, x + 8, categoryY, SIDEBAR_WIDTH - 16, 38)) {
 				selectedCategory = category;
 				targetScroll = 0;
 				expandedModule = null;
 				bindingModule = null;
 				return true;
 			}
-			categoryY += 58;
+			categoryY += 46;
 		}
 
 		int contentX = x + SIDEBAR_WIDTH + CONTENT_GAP;
+		List<Module> modules = filteredModules();
 		int contentY = y + HEADER_HEIGHT + Math.round(scrollAnimation.get());
-		for (Module module : filteredModules()) {
+		for (int index = 0; index < modules.size(); index++) {
+			Module module = modules.get(index);
+			int column = index % 2;
+			int itemX = contentX + column * (MODULE_WIDTH + MODULE_GAP);
+			if (column == 0 && index > 0) {
+				contentY += maxPairHeight(modules, index - 2) + MODULE_GAP;
+			}
 			int moduleHeight = moduleHeight(module);
 			if (contentY + moduleHeight < y + HEADER_HEIGHT) {
-				contentY += moduleHeight + MODULE_GAP;
 				continue;
 			}
 			if (contentY > y + GUI_HEIGHT - 26) {
 				break;
 			}
-			if (Render2D.hovered(mouseX, mouseY, contentX, contentY, MODULE_WIDTH, 40)) {
+			if (Render2D.hovered(mouseX, mouseY, itemX, contentY, MODULE_WIDTH, 40)) {
 				if (button == 0) {
 					module.toggle();
 					return true;
@@ -135,12 +141,11 @@ public final class ClickGuiScreen extends Screen {
 					return true;
 				}
 			}
-			if (Render2D.hovered(mouseX, mouseY, contentX + MODULE_WIDTH - 82, contentY + 48, 66, 18)) {
+			if (Render2D.hovered(mouseX, mouseY, itemX + MODULE_WIDTH - 62, contentY + 45, 50, 16)) {
 				bindingModule = bindingModule == module ? null : module;
 				expandedModule = module;
 				return true;
 			}
-			contentY += moduleHeight + MODULE_GAP;
 		}
 
 		return super.mouseClicked(mouseX, mouseY, button);
@@ -199,11 +204,10 @@ public final class ClickGuiScreen extends Screen {
 
 	private void renderBackground(DrawContext context) {
 		context.fill(0, 0, width, height, BACKDROP);
-		int alpha = (int) (26.0F * Render2D.clamp(openAnimation.get(), 0.0F, 1.0F));
+		int alpha = (int) (10.0F * Render2D.clamp(openAnimation.get(), 0.0F, 1.0F));
 		float wave = pulse();
-		renderSoftSpot(context, Math.round(width * 0.20F + wave * 80.0F), Math.round(height * 0.28F), 210, Render2D.alpha(ACCENT, alpha));
-		renderSoftSpot(context, Math.round(width * 0.72F - wave * 70.0F), Math.round(height * 0.62F), 185, Render2D.alpha(ACCENT_2, alpha - 4));
-		renderSoftSpot(context, Math.round(width * 0.15F + pulse(1.4F) * 50.0F), Math.round(height * 0.82F), 155, Render2D.alpha(SUCCESS, alpha - 8));
+		renderSoftSpot(context, Math.round(width * 0.24F + wave * 36.0F), Math.round(height * 0.30F), 150, Render2D.alpha(ACCENT, alpha));
+		renderSoftSpot(context, Math.round(width * 0.66F - wave * 30.0F), Math.round(height * 0.58F), 130, Render2D.alpha(ACCENT_2, alpha - 3));
 	}
 
 	private void renderSoftSpot(DrawContext context, int x, int y, int size, int color) {
@@ -215,82 +219,82 @@ public final class ClickGuiScreen extends Screen {
 	}
 
 	private void renderSidebar(DrawContext context, int mouseX, int mouseY, int x, int y) {
-		Render2D.roundedGlow(context, x, y, SIDEBAR_WIDTH, GUI_HEIGHT, 15, 0xFF000000, 6);
-		Render2D.roundedRect(context, x, y, SIDEBAR_WIDTH, GUI_HEIGHT, 15, GLASS);
-		Render2D.roundedBorder(context, x, y, SIDEBAR_WIDTH, GUI_HEIGHT, 15, OUTLINE);
+		Render2D.roundedGlow(context, x, y, SIDEBAR_WIDTH, GUI_HEIGHT, 12, 0xFF000000, 5);
+		Render2D.roundedRect(context, x, y, SIDEBAR_WIDTH, GUI_HEIGHT, 12, GLASS);
+		Render2D.roundedBorder(context, x, y, SIDEBAR_WIDTH, GUI_HEIGHT, 12, OUTLINE);
 
-		Render2D.roundedGlow(context, x + 16, y + 18, 40, 40, 13, ACCENT, 3);
-		Render2D.roundedRect(context, x + 16, y + 18, 40, 40, 13, 0xC93D3D46);
-		Render2D.centeredText(context, "L", x + 36, y + 33, ACCENT_2);
-		Render2D.scaledText(context, Lunex.NAME, x + 70, y + 25, 1.36F, TEXT);
-		Render2D.text(context, "Minecraft 1.21.4", x + 71, y + 45, MUTED);
+		Render2D.roundedGlow(context, x + 14, y + 18, 28, 28, 9, ACCENT, 2);
+		Render2D.roundedRect(context, x + 14, y + 18, 28, 28, 9, 0xFF15151B);
+		Render2D.centeredText(context, "L", x + 28, y + 27, ACCENT_2);
+		Render2D.scaledText(context, Lunex.NAME, x + 52, y + 19, 1.05F, TEXT);
+		Render2D.text(context, "1.21.4", x + 53, y + 37, MUTED);
 
-		renderSearch(context, x + 15, y + 72, mouseX, mouseY);
+		renderSearch(context, x + 12, y + 66, mouseX, mouseY);
 		renderCategories(context, mouseX, mouseY, x, y);
-		renderUserCard(context, x + 15, y + GUI_HEIGHT - 72);
+		renderUserCard(context, x + 12, y + GUI_HEIGHT - 62);
 	}
 
 	private void renderSearch(DrawContext context, int x, int y, int mouseX, int mouseY) {
-		boolean hovered = Render2D.hovered(mouseX, mouseY, x, y, SIDEBAR_WIDTH - 30, 30);
+		boolean hovered = Render2D.hovered(mouseX, mouseY, x, y, SIDEBAR_WIDTH - 24, 28);
 		float active = Math.max(searchFocusAnimation.get(), animation("search-hover", hovered, 0.2F));
-		Render2D.roundedRect(context, x, y, SIDEBAR_WIDTH - 30, 30, 9, Render2D.lerpColor(0x4A1D1D22, 0x6D34343C, active));
-		Render2D.roundedBorder(context, x, y, SIDEBAR_WIDTH - 30, 30, 9, Render2D.alpha(ACCENT, (int) (54 + active * 96)));
-		Render2D.text(context, searchText.isEmpty() && !searchFocused ? "Search..." : searchText, x + 12, y + 11, searchText.isEmpty() && !searchFocused ? DIM : TEXT);
+		Render2D.roundedRect(context, x, y, SIDEBAR_WIDTH - 24, 28, 8, Render2D.lerpColor(0xFF0E0E13, 0xFF171720, active));
+		Render2D.roundedBorder(context, x, y, SIDEBAR_WIDTH - 24, 28, 8, Render2D.alpha(ACCENT, (int) (42 + active * 84)));
+		Render2D.text(context, searchText.isEmpty() && !searchFocused ? "Search..." : searchText, x + 10, y + 10, searchText.isEmpty() && !searchFocused ? DIM : TEXT);
 		if (searchFocused && ticks / 12 % 2 == 0) {
-			int cursorX = x + 13 + Render2D.width(searchText);
-			Render2D.rect(context, cursorX, y + 8, 1, 15, TEXT);
+			int cursorX = x + 11 + Render2D.width(searchText);
+			Render2D.rect(context, cursorX, y + 7, 1, 14, TEXT);
 		}
 	}
 
 	private void renderCategories(DrawContext context, int mouseX, int mouseY, int x, int y) {
-		int indicatorY = y + 120 + Math.round(categoryAnimation.get() * 58.0F);
-		Render2D.roundedGlow(context, x + 10, indicatorY, SIDEBAR_WIDTH - 20, 45, 12, ACCENT, 4);
+		int indicatorY = y + 112 + Math.round(categoryAnimation.get() * 46.0F);
+		Render2D.roundedGlow(context, x + 8, indicatorY, SIDEBAR_WIDTH - 16, 38, 10, ACCENT, 3);
 
-		int categoryY = y + 120;
+		int categoryY = y + 112;
 		for (Category category : Category.values()) {
 			boolean selected = category == selectedCategory;
-			boolean hovered = Render2D.hovered(mouseX, mouseY, x + 10, categoryY, SIDEBAR_WIDTH - 20, 45);
+			boolean hovered = Render2D.hovered(mouseX, mouseY, x + 8, categoryY, SIDEBAR_WIDTH - 16, 38);
 			float hover = animation("category:" + category.name(), hovered || selected, 0.18F);
-			Render2D.roundedGlow(context, x + 8, categoryY - 2, SIDEBAR_WIDTH - 16, 49, 12, 0xFF000000, 2);
+			Render2D.roundedGlow(context, x + 7, categoryY - 1, SIDEBAR_WIDTH - 14, 40, 10, 0xFF000000, 1);
 			if (selected) {
-				Render2D.roundedHorizontalGradient(context, x + 10, categoryY, SIDEBAR_WIDTH - 20, 45, 12, Render2D.alpha(ACCENT, 148), Render2D.alpha(ACCENT_2, 104));
-				Render2D.roundedBorder(context, x + 10, categoryY, SIDEBAR_WIDTH - 20, 45, 12, Render2D.alpha(TEXT, 122));
+				Render2D.roundedHorizontalGradient(context, x + 8, categoryY, SIDEBAR_WIDTH - 16, 38, 10, Render2D.alpha(ACCENT, 132), Render2D.alpha(ACCENT_2, 82));
+				Render2D.roundedBorder(context, x + 8, categoryY, SIDEBAR_WIDTH - 16, 38, 10, Render2D.alpha(TEXT, 96));
 			} else {
-				Render2D.roundedRect(context, x + 10, categoryY, SIDEBAR_WIDTH - 20, 45, 12, Render2D.lerpColor(GLASS_DARK, GLASS_LIGHT, hover * 0.48F));
-				Render2D.roundedBorder(context, x + 10, categoryY, SIDEBAR_WIDTH - 20, 45, 12, Render2D.alpha(0xFF8A8A8A, 54 + (int) (hover * 46)));
+				Render2D.roundedRect(context, x + 8, categoryY, SIDEBAR_WIDTH - 16, 38, 10, Render2D.lerpColor(GLASS_DARK, GLASS_LIGHT, hover * 0.5F));
+				Render2D.roundedBorder(context, x + 8, categoryY, SIDEBAR_WIDTH - 16, 38, 10, Render2D.alpha(0xFF8A8A8A, 44 + (int) (hover * 38)));
 			}
 			int dotColor = selected ? TEXT : Render2D.lerpColor(MUTED, ACCENT_2, hover);
-			Render2D.roundedRect(context, x + 26 + Math.round(hover * 4.0F), categoryY + 17, 10, 10, 4, dotColor);
-			Render2D.scaledText(context, category.getTitle(), x + 48 + Math.round(hover * 4.0F), categoryY + 14, 1.16F, selected ? TEXT : Render2D.lerpColor(MUTED, TEXT, hover));
-			categoryY += 58;
+			Render2D.roundedRect(context, x + 22 + Math.round(hover * 3.0F), categoryY + 15, 8, 8, 3, dotColor);
+			Render2D.text(context, category.getTitle(), x + 42 + Math.round(hover * 3.0F), categoryY + 14, selected ? TEXT : Render2D.lerpColor(MUTED, TEXT, hover));
+			categoryY += 46;
 		}
 	}
 
 	private void renderUserCard(DrawContext context, int x, int y) {
-		Render2D.roundedRect(context, x, y, SIDEBAR_WIDTH - 30, 55, 14, 0x5E1B1B21);
-		Render2D.roundedBorder(context, x, y, SIDEBAR_WIDTH - 30, 55, 14, 0x4BFFFFFF);
-		Render2D.roundedRect(context, x + 12, y + 12, 30, 30, 10, Render2D.alpha(ACCENT, 132));
-		Render2D.centeredText(context, "U", x + 27, y + 22, TEXT);
-		Render2D.text(context, "User", x + 52, y + 13, TEXT);
-		Render2D.text(context, "Lunex Client", x + 52, y + 30, MUTED);
+		Render2D.roundedRect(context, x, y, SIDEBAR_WIDTH - 24, 48, 12, 0xFF0E0E13);
+		Render2D.roundedBorder(context, x, y, SIDEBAR_WIDTH - 24, 48, 12, 0x35FFFFFF);
+		Render2D.roundedRect(context, x + 10, y + 10, 28, 28, 9, Render2D.alpha(ACCENT, 122));
+		Render2D.centeredText(context, "U", x + 24, y + 19, TEXT);
+		Render2D.text(context, "User", x + 46, y + 10, TEXT);
+		Render2D.text(context, "Lunex", x + 46, y + 27, MUTED);
 	}
 
 	private void renderMainArea(DrawContext context, int mouseX, int mouseY, int x, int y) {
 		int contentWidth = GUI_WIDTH - SIDEBAR_WIDTH - CONTENT_GAP;
-		Render2D.roundedGlow(context, x - 10, y - 10, contentWidth + 20, GUI_HEIGHT + 20, 18, 0xFF000000, 5);
-		Render2D.roundedRect(context, x, y, contentWidth, GUI_HEIGHT, 18, 0x664A4A4A);
-		Render2D.roundedBorder(context, x, y, contentWidth, GUI_HEIGHT, 18, 0x5E777777);
+		Render2D.roundedGlow(context, x - 8, y - 8, contentWidth + 16, GUI_HEIGHT + 16, 14, 0xFF000000, 4);
+		Render2D.roundedRect(context, x, y, contentWidth, GUI_HEIGHT, 14, 0xF0050507);
+		Render2D.roundedBorder(context, x, y, contentWidth, GUI_HEIGHT, 14, 0x5966666C);
 
-		Render2D.scaledText(context, selectedCategory.getTitle(), x + 24, y + 22, 1.55F, TEXT);
+		Render2D.scaledText(context, selectedCategory.getTitle(), x + 18, y + 18, 1.22F, TEXT);
 		List<Module> modules = filteredModules();
 		long active = modules.stream().filter(Module::isEnabled).count();
 		String subtitle = modules.size() + " modules / " + active + " active";
-		Render2D.text(context, subtitle, x + 26, y + 51, MUTED);
-		Render2D.roundedRect(context, x + contentWidth - 170, y + 24, 140, 26, 10, 0x57373740);
-		Render2D.text(context, "RMB settings", x + contentWidth - 154, y + 33, MUTED);
+		Render2D.text(context, subtitle, x + 20, y + 43, MUTED);
+		Render2D.roundedRect(context, x + contentWidth - 112, y + 20, 92, 22, 8, 0xFF101016);
+		Render2D.text(context, "RMB settings", x + contentWidth - 102, y + 28, MUTED);
 
-		context.enableScissor(x + 12, y + HEADER_HEIGHT, x + contentWidth - 10, y + GUI_HEIGHT - 16);
-		int moduleX = x + 18;
+		context.enableScissor(x + 12, y + HEADER_HEIGHT, x + contentWidth - 10, y + GUI_HEIGHT - 14);
+		int moduleX = x + 14;
 		int moduleY = y + HEADER_HEIGHT + Math.round(scrollAnimation.get());
 		for (int index = 0; index < modules.size(); index++) {
 			Module module = modules.get(index);
@@ -313,18 +317,18 @@ public final class ClickGuiScreen extends Screen {
 		float hover = animation("module-hover:" + module.getId(), hovered, 0.18F);
 		float enabled = animation("module-toggle:" + module.getId(), module.isEnabled(), 0.2F);
 		int drawY = y - Math.round(hover * 3.0F);
-		Render2D.roundedGlow(context, x - 3, drawY - 3, w + 6, h + 6, 12, 0xFF000000, 4);
-		Render2D.roundedRect(context, x, drawY, w, h, 10, Render2D.lerpColor(0x852A2A2A, 0xA43A3A44, hover));
-		Render2D.roundedBorder(context, x, drawY, w, h, 10, Render2D.alpha(module.isEnabled() ? ACCENT : 0xFF555555, (int) (100 + enabled * 84 + hover * 30)));
+		Render2D.roundedGlow(context, x - 3, drawY - 3, w + 6, h + 6, 10, 0xFF000000, 3);
+		Render2D.roundedRect(context, x, drawY, w, h, 9, Render2D.lerpColor(0xFF111116, 0xFF191922, hover));
+		Render2D.roundedBorder(context, x, drawY, w, h, 9, Render2D.alpha(module.isEnabled() ? ACCENT : 0xFF555555, (int) (86 + enabled * 74 + hover * 28)));
 		if (enabled > 0.05F) {
-			Render2D.roundedBorder(context, x - 1, drawY - 1, w + 2, h + 2, 11, Render2D.alpha(ACCENT_2, (int) (enabled * 120)));
+			Render2D.roundedBorder(context, x - 1, drawY - 1, w + 2, h + 2, 10, Render2D.alpha(ACCENT_2, (int) (enabled * 105)));
 		}
 
-		Render2D.text(context, module.getName(), x + 12, drawY + 14, TEXT);
-		Render2D.text(context, Render2D.trimToWidth(module.getDescription(), w - 34), x + 12, drawY + 32, Render2D.lerpColor(MUTED, TEXT, enabled * 0.35F));
-		renderKeyBadge(context, bindingModule == module ? "..." : keyName(module.getKeybind()), x + w - 82, drawY + 14, module.isEnabled());
-		renderTogglePill(context, x + 12, drawY + 49, module, enabled);
-		Render2D.text(context, "Middle: bind", x + 114, drawY + 54, DIM);
+		Render2D.text(context, Render2D.trimToWidth(module.getName(), w - 80), x + 10, drawY + 11, TEXT);
+		Render2D.text(context, Render2D.trimToWidth(module.getDescription(), w - 22), x + 10, drawY + 28, Render2D.lerpColor(MUTED, TEXT, enabled * 0.35F));
+		renderKeyBadge(context, bindingModule == module ? "..." : keyName(module.getKeybind()), x + w - 62, drawY + 10, module.isEnabled());
+		renderTogglePill(context, x + 10, drawY + 45, module, enabled);
+		Render2D.text(context, "MMB bind", x + 98, drawY + 50, DIM);
 
 		if (expandedModule == module) {
 			renderExpanded(context, module, x, drawY, w);
@@ -332,26 +336,26 @@ public final class ClickGuiScreen extends Screen {
 	}
 
 	private void renderKeyBadge(DrawContext context, String text, int x, int y, boolean active) {
-		Render2D.roundedRect(context, x, y, 66, 20, 8, active ? 0x65344152 : 0x4A1D1D22);
-		Render2D.roundedBorder(context, x, y, 66, 20, 8, Render2D.alpha(active ? ACCENT_2 : 0xFF777777, 88));
-		Render2D.centeredText(context, text, x + 33, y + 6, active ? TEXT : MUTED);
+		Render2D.roundedRect(context, x, y, 50, 18, 7, active ? 0x65344152 : 0xFF0E0E13);
+		Render2D.roundedBorder(context, x, y, 50, 18, 7, Render2D.alpha(active ? ACCENT_2 : 0xFF777777, 76));
+		Render2D.centeredText(context, Render2D.trimToWidth(text, 40), x + 25, y + 5, active ? TEXT : MUTED);
 	}
 
 	private void renderTogglePill(DrawContext context, int x, int y, Module module, float enabled) {
-		Render2D.roundedHorizontalGradient(context, x, y, 84, 18, 9, Render2D.lerpColor(0x5D1D1D22, Render2D.alpha(ACCENT, 140), enabled), Render2D.lerpColor(0x5D262630, Render2D.alpha(ACCENT_2, 132), enabled));
-		Render2D.roundedBorder(context, x, y, 84, 18, 9, Render2D.alpha(TEXT, 42 + (int) (enabled * 70)));
-		Render2D.roundedRect(context, x + 4 + Math.round(enabled * 48.0F), y + 4, 10, 10, 5, module.isEnabled() ? TEXT : MUTED);
-		Render2D.centeredText(context, module.isEnabled() ? "ON" : "OFF", x + 42, y + 5, TEXT);
+		Render2D.roundedHorizontalGradient(context, x, y, 76, 16, 8, Render2D.lerpColor(0xFF111116, Render2D.alpha(ACCENT, 130), enabled), Render2D.lerpColor(0xFF171720, Render2D.alpha(ACCENT_2, 120), enabled));
+		Render2D.roundedBorder(context, x, y, 76, 16, 8, Render2D.alpha(TEXT, 34 + (int) (enabled * 60)));
+		Render2D.roundedRect(context, x + 4 + Math.round(enabled * 44.0F), y + 3, 10, 10, 5, module.isEnabled() ? TEXT : MUTED);
+		Render2D.centeredText(context, module.isEnabled() ? "ON" : "OFF", x + 38, y + 4, TEXT);
 	}
 
 	private void renderExpanded(DrawContext context, Module module, int x, int y, int w) {
-		int boxY = y + 76;
-		Render2D.roundedRect(context, x + 10, boxY, w - 20, 34, 9, 0x4D16161C);
-		Render2D.roundedBorder(context, x + 10, boxY, w - 20, 34, 9, 0x43FFFFFF);
-		Render2D.text(context, "Description", x + 22, boxY + 8, DIM);
-		Render2D.text(context, Render2D.trimToWidth(module.getDescription(), w - 120), x + 94, boxY + 8, MUTED);
-		Render2D.text(context, "Bind", x + 22, boxY + 22, DIM);
-		Render2D.text(context, bindingModule == module ? "Press key" : keyName(module.getKeybind()), x + 94, boxY + 22, TEXT);
+		int boxY = y + 70;
+		Render2D.roundedRect(context, x + 8, boxY, w - 16, 30, 8, 0xFF0B0B10);
+		Render2D.roundedBorder(context, x + 8, boxY, w - 16, 30, 8, 0x33FFFFFF);
+		Render2D.text(context, "Desc", x + 16, boxY + 7, DIM);
+		Render2D.text(context, Render2D.trimToWidth(module.getDescription(), w - 74), x + 52, boxY + 7, MUTED);
+		Render2D.text(context, "Bind", x + 16, boxY + 20, DIM);
+		Render2D.text(context, bindingModule == module ? "Press key" : keyName(module.getKeybind()), x + 52, boxY + 20, TEXT);
 	}
 
 	private float animation(String id, boolean target, float speed) {
