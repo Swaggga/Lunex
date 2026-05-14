@@ -1,0 +1,29 @@
+{
+	"schemaVersion": 1,
+	"id": "lunex",
+	"version": "${version}",
+	"name": "Lunex",
+	"description": "Private Lunex client base for Minecraft 1.21.4 Fabric.",
+	"authors": [
+		"Lunex"
+	],
+	"contact": {
+		"sources": "https://github.com/moonlithcoder/LunexBeta"
+	},
+	"license": "MIT",
+	"environment": "client",
+	"entrypoints": {
+		"main": [
+			"dev.lunex.Lunex"
+		],
+		"client": [
+			"dev.lunex.client.LunexClient"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.16.10",
+		"minecraft": "~1.21.4",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}
