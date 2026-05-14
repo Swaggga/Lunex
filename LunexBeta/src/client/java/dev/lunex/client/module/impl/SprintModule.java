@@ -8,7 +8,7 @@ import net.minecraft.client.MinecraftClient;
 
 public final class SprintModule extends Module {
 	public SprintModule(ClientConfig config) {
-		super("sprint", "Sprint", "Keeps sprint active", Category.MOVEMENT, true, config);
+		super("sprint", "Sprint", "Keeps sprint active", Category.MOVEMENT, true, config, new Setting("Mode", "Legit"));
 	}
 
 	@Override

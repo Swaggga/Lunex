@@ -11,7 +11,7 @@ public final class FullbrightModule extends Module {
 	private boolean capturedGamma;
 
 	public FullbrightModule(ClientConfig config) {
-		super("fullbright", "Fullbright", "Brightens dark areas", Category.RENDER, false, config);
+		super("fullbright", "Fullbright", "Brightens dark areas", Category.RENDER, false, config, new Setting("Gamma", "16.0"));
 	}
 
 	@Override

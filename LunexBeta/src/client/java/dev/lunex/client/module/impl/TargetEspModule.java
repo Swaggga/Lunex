@@ -18,7 +18,7 @@ public final class TargetEspModule extends Module {
 	private static final double RANGE = 32.0D;
 
 	public TargetEspModule(ClientConfig config) {
-		super("targetesp", "TargetESP", "3D player outlines", Category.RENDER, true, config);
+		super("targetesp", "TargetESP", "3D player outlines", Category.RENDER, true, config, new Setting("Range", "32"), new Setting("Mode", "Box"));
 	}
 
 	public void render(WorldRenderContext context, ModuleManagerAccessor modules) {
