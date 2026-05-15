@@ -36,9 +36,9 @@ public final class ClickGuiScreen extends Screen {
 	private static final int CARD = 0xAA1C161C;
 	private static final int CARD_ENABLED = 0xAA3C243C;
 	private static final int OUTLINE = 0x2DFFFFFF;
-	private static final int TEXT = 0xFFE0E0E0;
-	private static final int MUTED = 0xFFB4B4B4;
-	private static final int DIM = 0xFF858085;
+	private static final int TEXT = 0xFFF6F6F6;
+	private static final int MUTED = 0xFFD4D4D8;
+	private static final int DIM = 0xFFA6A1A8;
 	private static final int ACCENT = 0xFF5A243C;
 
 	private final ModuleManager moduleManager;
@@ -296,7 +296,7 @@ public final class ClickGuiScreen extends Screen {
 
 	private void renderBindOverlay(DrawContext context, float alpha) {
 		context.fill(0, 0, width, height, Render2D.alpha(0xFF000000, (int) (120 * alpha)));
-		vanillaCenteredText(context, "Press any key to bind...", width / 2, height / 2, Render2D.alpha(TEXT, (int) (255 * alpha)));
+		readableCenteredText(context, "Нажмите любую клавишу для бинда...", width / 2, height / 2, Render2D.alpha(TEXT, (int) (255 * alpha)));
 	}
 
 	private int animatedModuleHeight(Module module) {
@@ -369,11 +369,11 @@ public final class ClickGuiScreen extends Screen {
 	}
 
 	private void vanillaText(DrawContext context, String text, int x, int y, int color) {
-		context.drawText(textRenderer(), text, x, y, color, false);
+		readableText(context, text, x, y, color);
 	}
 
 	private void vanillaCenteredText(DrawContext context, String text, int x, int y, int color) {
-		context.drawText(textRenderer(), text, x - vanillaWidth(text) / 2, y, color, false);
+		readableCenteredText(context, text, x, y, color);
 	}
 
 	private int vanillaWidth(String text) {
@@ -383,9 +383,17 @@ public final class ClickGuiScreen extends Screen {
 	private String trimVanilla(String text, int maxWidth) {
 		String value = text;
 		while (!value.isEmpty() && vanillaWidth(value + "...") > maxWidth) {
-			value = value.substring(0, value.length() - 1);
+			value = value.substring(0, value.offsetByCodePoints(0, value.codePointCount(0, value.length()) - 1));
 		}
 		return value.length() == text.length() ? text : value + "...";
+	}
+
+	private void readableText(DrawContext context, String text, int x, int y, int color) {
+		context.drawText(textRenderer(), Text.literal(text), x, y, color, true);
+	}
+
+	private void readableCenteredText(DrawContext context, String text, int x, int y, int color) {
+		readableText(context, text, x - vanillaWidth(text) / 2, y, color);
 	}
 
 	private TextRenderer textRenderer() {
