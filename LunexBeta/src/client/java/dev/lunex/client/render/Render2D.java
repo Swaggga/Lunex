@@ -112,7 +112,7 @@ public final class Render2D {
 	}
 
 	public static void text(DrawContext context, String text, int x, int y, int color) {
-		text(context, text, x, y, color, false);
+		text(context, text, x, y, color, true);
 	}
 
 	public static void text(DrawContext context, String text, int x, int y, int color, boolean shadow) {
@@ -121,7 +121,7 @@ public final class Render2D {
 	}
 
 	public static void centeredText(DrawContext context, String text, int x, int y, int color) {
-		centeredText(context, text, x, y, color, false);
+		centeredText(context, text, x, y, color, true);
 	}
 
 	public static void centeredText(DrawContext context, String text, int x, int y, int color, boolean shadow) {
@@ -129,7 +129,7 @@ public final class Render2D {
 	}
 
 	public static void scaledText(DrawContext context, String text, int x, int y, float scale, int color) {
-		scaledText(context, text, x, y, scale, color, false);
+		scaledText(context, text, x, y, scale, color, true);
 	}
 
 	public static void scaledText(DrawContext context, String text, int x, int y, float scale, int color, boolean shadow) {
