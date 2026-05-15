@@ -5,7 +5,6 @@ import dev.lunex.client.module.Module;
 import dev.lunex.client.module.ModuleManager;
 import dev.lunex.client.render.Render2D;
 
-import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.util.InputUtil;
@@ -296,7 +295,7 @@ public final class ClickGuiScreen extends Screen {
 
 	private void renderBindOverlay(DrawContext context, float alpha) {
 		context.fill(0, 0, width, height, Render2D.alpha(0xFF000000, (int) (120 * alpha)));
-		readableCenteredText(context, "Нажмите любую клавишу для бинда...", width / 2, height / 2, Render2D.alpha(TEXT, (int) (255 * alpha)));
+		vanillaCenteredText(context, "Нажмите любую клавишу для бинда...", width / 2, height / 2, Render2D.alpha(TEXT, (int) (255 * alpha)));
 	}
 
 	private int animatedModuleHeight(Module module) {
@@ -369,35 +368,19 @@ public final class ClickGuiScreen extends Screen {
 	}
 
 	private void vanillaText(DrawContext context, String text, int x, int y, int color) {
-		readableText(context, text, x, y, color);
+		Render2D.text(context, text, x, y, color, true);
 	}
 
 	private void vanillaCenteredText(DrawContext context, String text, int x, int y, int color) {
-		readableCenteredText(context, text, x, y, color);
+		Render2D.centeredText(context, text, x, y, color, true);
 	}
 
 	private int vanillaWidth(String text) {
-		return textRenderer().getWidth(text);
+		return Render2D.width(text);
 	}
 
 	private String trimVanilla(String text, int maxWidth) {
-		String value = text;
-		while (!value.isEmpty() && vanillaWidth(value + "...") > maxWidth) {
-			value = value.substring(0, value.offsetByCodePoints(0, value.codePointCount(0, value.length()) - 1));
-		}
-		return value.length() == text.length() ? text : value + "...";
-	}
-
-	private void readableText(DrawContext context, String text, int x, int y, int color) {
-		context.drawText(textRenderer(), Text.literal(text), x, y, color, true);
-	}
-
-	private void readableCenteredText(DrawContext context, String text, int x, int y, int color) {
-		readableText(context, text, x - vanillaWidth(text) / 2, y, color);
-	}
-
-	private TextRenderer textRenderer() {
-		return client.textRenderer;
+		return Render2D.trimToWidth(text, maxWidth);
 	}
 
 	private int categoryIndex(Category category) {

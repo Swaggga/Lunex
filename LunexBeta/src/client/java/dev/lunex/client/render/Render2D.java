@@ -1,12 +1,18 @@
 package dev.lunex.client.render;
 
+import dev.lunex.Lunex;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
+
 
 public final class Render2D {
+	private static final Identifier LUNEX_FONT = Identifier.of(Lunex.MOD_ID, "lunex");
+
 	private Render2D() {
 	}
 
@@ -111,24 +117,32 @@ public final class Render2D {
 
 	public static void text(DrawContext context, String text, int x, int y, int color, boolean shadow) {
 		TextRenderer renderer = MinecraftClient.getInstance().textRenderer;
-		context.drawText(renderer, Text.literal(text), x, y, color, shadow);
+		context.drawText(renderer, lunexText(text), x, y, color, shadow);
 	}
 
 	public static void centeredText(DrawContext context, String text, int x, int y, int color) {
-		text(context, text, x - width(text) / 2, y, color);
+		centeredText(context, text, x, y, color, false);
+	}
+
+	public static void centeredText(DrawContext context, String text, int x, int y, int color, boolean shadow) {
+		text(context, text, x - width(text) / 2, y, color, shadow);
 	}
 
 	public static void scaledText(DrawContext context, String text, int x, int y, float scale, int color) {
+		scaledText(context, text, x, y, scale, color, false);
+	}
+
+	public static void scaledText(DrawContext context, String text, int x, int y, float scale, int color, boolean shadow) {
 		MatrixStack matrices = context.getMatrices();
 		matrices.push();
 		matrices.translate(x, y, 0.0F);
 		matrices.scale(scale, scale, 1.0F);
-		context.drawText(MinecraftClient.getInstance().textRenderer, Text.literal(text), 0, 0, color, false);
+		context.drawText(MinecraftClient.getInstance().textRenderer, lunexText(text), 0, 0, color, shadow);
 		matrices.pop();
 	}
 
 	public static int width(String text) {
-		return MinecraftClient.getInstance().textRenderer.getWidth(Text.literal(text));
+		return MinecraftClient.getInstance().textRenderer.getWidth(lunexText(text));
 	}
 
 	public static String trimToWidth(String text, int maxWidth) {
@@ -138,6 +152,10 @@ public final class Render2D {
 		}
 
 		return value.length() == text.length() ? text : value + "...";
+	}
+
+	private static Text lunexText(String text) {
+		return Text.literal(text).styled(style -> style.withFont(LUNEX_FONT));
 	}
 
 	public static void line(DrawContext context, int x1, int y1, int x2, int y2, int color) {
