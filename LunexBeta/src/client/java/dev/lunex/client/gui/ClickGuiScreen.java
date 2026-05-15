@@ -7,59 +7,54 @@ import dev.lunex.client.render.Render2D;
 
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.util.InputUtil;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.text.Text;
 
 import org.lwjgl.glfw.GLFW;
 
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
 public final class ClickGuiScreen extends Screen {
-	private static final int GUI_WIDTH = 840;
-	private static final int GUI_HEIGHT = 312;
-	private static final int COLUMN_WIDTH = 128;
-	private static final int COLUMN_GAP = 8;
-	private static final int COLUMN_AREA_HEIGHT = 250;
-	private static final int MODULE_HEIGHT = 18;
-	private static final int SETTING_HEIGHT = 16;
-	private static final int SEARCH_WIDTH = 300;
-	private static final int SEARCH_HEIGHT = 24;
-	private static final int BACKDROP = 0xB8000000;
-	private static final int PANEL = 0xE6141016;
-	private static final int CARD = 0xAA1C161C;
-	private static final int CARD_ENABLED = 0xAA3C243C;
-	private static final int OUTLINE = 0x2DFFFFFF;
-	private static final int TEXT = 0xFFF6F6F6;
-	private static final int MUTED = 0xFFD4D4D8;
-	private static final int DIM = 0xFFA6A1A8;
-	private static final int ACCENT = 0xFF5A243C;
+	private static final int GUI_WIDTH = 560;
+	private static final int GUI_HEIGHT = 360;
+	private static final int SIDEBAR_WIDTH = 150;
+	private static final int MODULE_WIDTH = 142;
+	private static final int SETTINGS_WIDTH = 238;
+	private static final int GAP = 14;
+	private static final int MODULE_CARD_HEIGHT = 54;
+	private static final int SETTING_CARD_HEIGHT = 32;
+	private static final int BACKDROP = 0x77000000;
+	private static final int WINDOW = 0xF309090B;
+	private static final int PANEL = 0xF70E0E11;
+	private static final int PANEL_LIGHT = 0xFF151518;
+	private static final int CARD = 0xF8141417;
+	private static final int CARD_HOVER = 0xFF1B1B20;
+	private static final int CARD_ACTIVE = 0xFF181A22;
+	private static final int OUTLINE = 0x18FFFFFF;
+	private static final int TEXT = 0xFFF4F4F6;
+	private static final int MUTED = 0xFFB3B3B9;
+	private static final int DIM = 0xFF76767D;
+	private static final int ACCENT = 0xFF8B95FF;
 
 	private final ModuleManager moduleManager;
-	private final Map<String, Animation> hoverAnimations = new HashMap<>();
-	private final Map<String, Animation> heightAnimations = new HashMap<>();
-	private final Map<Category, Animation> scrollAnimations = new EnumMap<>(Category.class);
-	private final Map<Category, Integer> targetScrolls = new EnumMap<>(Category.class);
+	private final Map<String, Animation> animations = new HashMap<>();
 	private final Animation openAnimation = new Animation(0.0F);
 	private final Animation closeAnimation = new Animation(1.0F);
-	private final Animation searchAnimation = new Animation(0.0F);
-	private boolean closing;
-	private String searchText = "";
-	private boolean searchFocused;
+	private final Animation moduleScrollAnimation = new Animation(0.0F);
+	private final Animation settingsScrollAnimation = new Animation(0.0F);
+	private Category selectedCategory = Category.RENDER;
+	private Module selectedModule;
 	private Module bindingModule;
-	private Module expandedModule;
+	private int targetModuleScroll;
+	private int targetSettingsScroll;
+	private boolean closing;
 
 	public ClickGuiScreen(ModuleManager moduleManager) {
 		super(Text.literal("Lunex ClickGUI"));
 		this.moduleManager = moduleManager;
-		for (Category category : columns()) {
-			scrollAnimations.put(category, new Animation(0.0F));
-			targetScrolls.put(category, 0);
-		}
 	}
 
 	@Override
@@ -75,25 +70,29 @@ public final class ClickGuiScreen extends Screen {
 		}
 
 		float alpha = closing ? closeAnimation.get() : Render2D.clamp(openAnimation.get(), 0.0F, 1.0F);
-		searchAnimation.animate(searchFocused ? 1.0F : 0.0F, 0.20F);
-		for (Category category : columns()) {
-			int target = clampScroll(category, targetScrolls.getOrDefault(category, 0));
-			targetScrolls.put(category, target);
-			scrollAnimations.get(category).animate(target, 0.12F);
+		List<Module> modules = modulesForSelectedCategory();
+		if (selectedModule == null || selectedModule.getCategory() != selectedCategory) {
+			selectedModule = modules.isEmpty() ? null : modules.get(0);
 		}
+		targetModuleScroll = clampModuleScroll(targetModuleScroll);
+		targetSettingsScroll = clampSettingsScroll(targetSettingsScroll);
+		moduleScrollAnimation.animate(targetModuleScroll, 0.16F);
+		settingsScrollAnimation.animate(targetSettingsScroll, 0.16F);
 
-		context.fill(0, 0, width, height, Render2D.alpha(BACKDROP, (int) (184 * alpha)));
-		int x = (width - guiWidth()) / 2;
+		context.fill(0, 0, width, height, Render2D.alpha(BACKDROP, (int) (119 * alpha)));
+		int x = (width - GUI_WIDTH) / 2;
 		int y = (height - GUI_HEIGHT) / 2;
-		float guiScale = guiScale();
 		float eased = Animation.easeOutBack(alpha);
 		MatrixStack matrices = context.getMatrices();
 		matrices.push();
-		matrices.translate(x + guiWidth() / 2.0F, y + GUI_HEIGHT / 2.0F, 0.0F);
-		matrices.scale(guiScale * (0.92F + eased * 0.08F), guiScale * (0.92F + eased * 0.08F), 1.0F);
-		matrices.translate(-(x + guiWidth() / 2.0F), -(y + GUI_HEIGHT / 2.0F), 0.0F);
-		renderColumns(context, mouseX, mouseY, x, y, alpha);
-		renderSearch(context, mouseX, mouseY, x + (guiWidth() - SEARCH_WIDTH) / 2, y + GUI_HEIGHT - 5, alpha);
+		matrices.translate(x + GUI_WIDTH / 2.0F, y + GUI_HEIGHT / 2.0F, 0.0F);
+		matrices.scale(0.94F + eased * 0.06F, 0.94F + eased * 0.06F, 1.0F);
+		matrices.translate(-(x + GUI_WIDTH / 2.0F), -(y + GUI_HEIGHT / 2.0F), 0.0F);
+
+		renderWindow(context, x, y, alpha);
+		renderSidebar(context, mouseX, mouseY, x, y, alpha);
+		renderModulePanel(context, mouseX, mouseY, x + SIDEBAR_WIDTH + GAP, y, alpha);
+		renderSettingsPanel(context, mouseX, mouseY, x + SIDEBAR_WIDTH + GAP + MODULE_WIDTH + GAP, y, alpha);
 		if (bindingModule != null) {
 			renderBindOverlay(context, alpha);
 		}
@@ -105,60 +104,60 @@ public final class ClickGuiScreen extends Screen {
 		if (bindingModule != null) {
 			return true;
 		}
-		int x = (width - guiWidth()) / 2;
+		int x = (width - GUI_WIDTH) / 2;
 		int y = (height - GUI_HEIGHT) / 2;
-		int searchX = x + (guiWidth() - SEARCH_WIDTH) / 2;
-		int searchY = y + GUI_HEIGHT - 5;
-		if (button == 0 && Render2D.hovered(mouseX, mouseY, searchX, searchY, SEARCH_WIDTH, SEARCH_HEIGHT)) {
-			searchFocused = true;
-			return true;
+		if (!Render2D.hovered(mouseX, mouseY, x, y, GUI_WIDTH, GUI_HEIGHT)) {
+			return super.mouseClicked(mouseX, mouseY, button);
 		}
-		searchFocused = false;
 
-		for (int column = 0; column < columns().length; column++) {
-			Category category = columns()[column];
-			ColumnBounds bounds = columnBounds(x, y, column);
-			if (!Render2D.hovered(mouseX, mouseY, bounds.x(), bounds.listY() - 6, columnWidth(), COLUMN_AREA_HEIGHT + 32)) {
-				continue;
+		int categoryY = y + 66;
+		for (Category category : categories()) {
+			if (Render2D.hovered(mouseX, mouseY, x + 18, categoryY, SIDEBAR_WIDTH - 36, 34)) {
+				selectedCategory = category;
+				selectedModule = firstModule(category);
+				targetModuleScroll = 0;
+				targetSettingsScroll = 0;
+				return true;
 			}
-			int moduleY = bounds.contentY() + Math.round(scrollAnimations.get(category).get());
-			for (Module module : filteredModules(category)) {
-				int height = animatedModuleHeight(module);
-				if (moduleY + height >= bounds.contentY() - 4 && moduleY <= bounds.listY() - 6 + COLUMN_AREA_HEIGHT + 32) {
-					if (Render2D.hovered(mouseX, mouseY, bounds.x() + 6, moduleY, columnWidth() - 12, height)) {
-						if (button == 0) {
-							module.toggle();
-							return true;
-						}
-						if (button == 1) {
-							expandedModule = expandedModule == module ? null : module;
-							return true;
-						}
-						if (button == 2) {
-							bindingModule = module;
-							expandedModule = module;
-							return true;
-						}
-					}
-				}
-				moduleY += height + 2;
-			}
+			categoryY += 34;
 		}
-		return super.mouseClicked(mouseX, mouseY, button);
+
+		int moduleX = x + SIDEBAR_WIDTH + GAP;
+		int moduleY = y + 18 + Math.round(moduleScrollAnimation.get());
+		for (Module module : modulesForSelectedCategory()) {
+			if (Render2D.hovered(mouseX, mouseY, moduleX, moduleY, MODULE_WIDTH, MODULE_CARD_HEIGHT)) {
+				selectedModule = module;
+				targetSettingsScroll = 0;
+				if (button == 0) {
+					module.toggle();
+					return true;
+				}
+				if (button == 1) {
+					return true;
+				}
+				if (button == 2) {
+					bindingModule = module;
+					return true;
+				}
+			}
+			moduleY += MODULE_CARD_HEIGHT + 10;
+		}
+		return true;
 	}
 
 	@Override
 	public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-		int x = (width - guiWidth()) / 2;
+		int x = (width - GUI_WIDTH) / 2;
 		int y = (height - GUI_HEIGHT) / 2;
-		for (int column = 0; column < columns().length; column++) {
-			Category category = columns()[column];
-			ColumnBounds bounds = columnBounds(x, y, column);
-			if (Render2D.hovered(mouseX, mouseY, bounds.x(), bounds.listY() - 6, columnWidth(), COLUMN_AREA_HEIGHT + 32)) {
-				int target = targetScrolls.getOrDefault(category, 0) + (int) (verticalAmount * 15.0D);
-				targetScrolls.put(category, clampScroll(category, target));
-				return true;
-			}
+		int moduleX = x + SIDEBAR_WIDTH + GAP;
+		int settingsX = moduleX + MODULE_WIDTH + GAP;
+		if (Render2D.hovered(mouseX, mouseY, moduleX, y + 14, MODULE_WIDTH, GUI_HEIGHT - 28)) {
+			targetModuleScroll = clampModuleScroll(targetModuleScroll + (int) (verticalAmount * 34.0D));
+			return true;
+		}
+		if (Render2D.hovered(mouseX, mouseY, settingsX, y + 14, SETTINGS_WIDTH, GUI_HEIGHT - 28)) {
+			targetSettingsScroll = clampSettingsScroll(targetSettingsScroll + (int) (verticalAmount * 34.0D));
+			return true;
 		}
 		return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
 	}
@@ -174,28 +173,7 @@ public final class ClickGuiScreen extends Screen {
 			closeWithAnimation();
 			return true;
 		}
-		if (searchFocused) {
-			if (keyCode == GLFW.GLFW_KEY_ENTER) {
-				searchFocused = false;
-				return true;
-			}
-			if (keyCode == GLFW.GLFW_KEY_BACKSPACE && !searchText.isEmpty()) {
-				searchText = searchText.substring(0, searchText.length() - 1);
-				resetScrolls();
-				return true;
-			}
-		}
 		return super.keyPressed(keyCode, scanCode, modifiers);
-	}
-
-	@Override
-	public boolean charTyped(char chr, int modifiers) {
-		if (searchFocused && !Character.isISOControl(chr) && vanillaWidth(searchText + chr) < SEARCH_WIDTH - 20) {
-			searchText += chr;
-			resetScrolls();
-			return true;
-		}
-		return super.charTyped(chr, modifiers);
 	}
 
 	@Override
@@ -208,162 +186,223 @@ public final class ClickGuiScreen extends Screen {
 		return false;
 	}
 
-	private void renderColumns(DrawContext context, int mouseX, int mouseY, int x, int y, float alpha) {
-		for (int column = 0; column < columns().length; column++) {
-			Category category = columns()[column];
-			ColumnBounds bounds = columnBounds(x, y, column);
-			int panelColor = Render2D.alpha(PANEL, (int) (230 * alpha));
-			int outlineColor = Render2D.alpha(OUTLINE, (int) (45 * alpha));
-			Render2D.roundedGlow(context, bounds.x(), bounds.listY() - 6, columnWidth(), COLUMN_AREA_HEIGHT + 32, 6, 0xFF000000, 4);
-			Render2D.roundedRect(context, bounds.x(), bounds.listY() - 6, columnWidth(), COLUMN_AREA_HEIGHT + 32, 6, panelColor);
-			Render2D.roundedBorder(context, bounds.x(), bounds.listY() - 6, columnWidth(), COLUMN_AREA_HEIGHT + 32, 6, outlineColor);
-			vanillaCenteredText(context, categoryTitle(category), bounds.x() + columnWidth() / 2, bounds.listY() + 8, Render2D.alpha(TEXT, (int) (255 * alpha)));
-			renderModuleList(context, mouseX, mouseY, category, bounds, alpha);
+	private void renderWindow(DrawContext context, int x, int y, float alpha) {
+		Render2D.roundedGlow(context, x, y, GUI_WIDTH, GUI_HEIGHT, 12, 0xFF000000, 6);
+		Render2D.roundedRect(context, x, y, GUI_WIDTH, GUI_HEIGHT, 12, Render2D.alpha(WINDOW, (int) (243 * alpha)));
+		Render2D.roundedBorder(context, x, y, GUI_WIDTH, GUI_HEIGHT, 12, Render2D.alpha(0xFFFFFFFF, (int) (22 * alpha)));
+		Render2D.roundedRect(context, x + SIDEBAR_WIDTH, y + 12, 1, GUI_HEIGHT - 24, 0, Render2D.alpha(0xFFFFFFFF, (int) (9 * alpha)));
+	}
+
+	private void renderSidebar(DrawContext context, int mouseX, int mouseY, int x, int y, float alpha) {
+		Render2D.roundedRect(context, x + 14, y + 14, SIDEBAR_WIDTH - 28, 36, 8, Render2D.alpha(PANEL, (int) (247 * alpha)));
+		Render2D.roundedBorder(context, x + 14, y + 14, SIDEBAR_WIDTH - 28, 36, 8, Render2D.alpha(OUTLINE, (int) (55 * alpha)));
+		Render2D.roundedRect(context, x + 22, y + 24, 10, 10, 5, Render2D.alpha(ACCENT, (int) (255 * alpha)));
+		text(context, "Lunex", x + 38, y + 20, TEXT, alpha);
+		text(context, "Build 1.0.0", x + 88, y + 20, MUTED, alpha);
+		Render2D.roundedRect(context, x + 18, y + 56, SIDEBAR_WIDTH - 36, 1, 0, Render2D.alpha(0xFFFFFFFF, (int) (8 * alpha)));
+
+		int categoryY = y + 66;
+		for (Category category : categories()) {
+			boolean selected = category == selectedCategory;
+			boolean hovered = Render2D.hovered(mouseX, mouseY, x + 18, categoryY, SIDEBAR_WIDTH - 36, 30);
+			float active = Math.max(animation("cat:" + category.name(), hovered, 0.18F), selected ? 1.0F : 0.0F);
+			int fill = Render2D.lerpColor(0x00000000, PANEL_LIGHT, active);
+			if (selected || active > 0.05F) {
+				Render2D.roundedRect(context, x + 18, categoryY, SIDEBAR_WIDTH - 36, 30, 7, Render2D.alpha(fill, (int) ((55 + active * 130) * alpha)));
+			}
+			text(context, categoryIcon(category), x + 26, categoryY + 10, selected ? ACCENT : DIM, alpha);
+			text(context, categoryTitle(category), x + 44, categoryY + 10, selected ? TEXT : MUTED, alpha);
+			categoryY += 34;
 		}
 	}
 
-	private void renderModuleList(DrawContext context, int mouseX, int mouseY, Category category, ColumnBounds bounds, float alpha) {
-		int clipTop = bounds.contentY() - 4;
-		int clipBottom = bounds.listY() - 6 + COLUMN_AREA_HEIGHT + 32;
-		context.enableScissor(bounds.x(), clipTop, bounds.x() + columnWidth(), clipBottom);
-		int moduleY = bounds.contentY() + Math.round(scrollAnimations.get(category).get());
-		for (Module module : filteredModules(category)) {
-			int height = animatedModuleHeight(module);
-			if (moduleY + height >= clipTop && moduleY <= clipBottom) {
-				renderModule(context, mouseX, mouseY, module, bounds.x(), moduleY, columnWidth(), height, alpha);
+	private void renderModulePanel(DrawContext context, int mouseX, int mouseY, int x, int y, float alpha) {
+		context.enableScissor(x - 3, y + 12, x + MODULE_WIDTH + 3, y + GUI_HEIGHT - 12);
+		int moduleY = y + 18 + Math.round(moduleScrollAnimation.get());
+		for (Module module : modulesForSelectedCategory()) {
+			if (moduleY + MODULE_CARD_HEIGHT >= y + 12 && moduleY <= y + GUI_HEIGHT - 12) {
+				renderModuleCard(context, mouseX, mouseY, module, x, moduleY, alpha);
 			}
-			moduleY += height + 2;
+			moduleY += MODULE_CARD_HEIGHT + 10;
 		}
 		context.disableScissor();
-		renderScrollBar(context, category, bounds, alpha);
+		renderScrollbar(context, x + MODULE_WIDTH - 3, y + 18, GUI_HEIGHT - 36, moduleContentHeight(), -moduleScrollAnimation.get(), alpha);
 	}
 
-	private void renderModule(DrawContext context, int mouseX, int mouseY, Module module, int x, int y, int width, int height, float alpha) {
-		boolean hovered = Render2D.hovered(mouseX, mouseY, x + 6, y, width - 12, height);
-		float hover = animation("hover:" + module.getId(), hovered, 0.18F);
-		int base = module.isEnabled() ? CARD_ENABLED : CARD;
-		int fill = Render2D.lerpColor(base, Render2D.alpha(0xFF3D303D, 190), hover);
-		Render2D.roundedBorder(context, x + 6, y, width - 12, height, 4, Render2D.alpha(0xFFFFFFFF, (int) (45 * alpha)));
-		Render2D.roundedGlow(context, x + 6, y, width - 12, height, 4, 0xFF000000, 2);
-		Render2D.roundedRect(context, x + 6, y, width - 12, height, 4, Render2D.alpha(fill, (int) (170 * alpha)));
-		vanillaText(context, trimVanilla(module.getName(), width - 26), x + 10, y + 5, Render2D.alpha(TEXT, (int) (255 * alpha)));
-		if (module.getSettings().length > 0) {
-			vanillaCenteredText(context, "...", x + width - 20, y + 5, Render2D.alpha(MUTED, (int) (255 * alpha)));
-		}
-		if (bindingModule == module) {
-			vanillaCenteredText(context, "bind", x + width / 2, y + 5, Render2D.alpha(TEXT, (int) (255 * alpha)));
-		}
-		if (height > MODULE_HEIGHT + 2) {
-			renderSettings(context, module, x, y + MODULE_HEIGHT - 2, width, alpha);
-		}
+	private void renderModuleCard(DrawContext context, int mouseX, int mouseY, Module module, int x, int y, float alpha) {
+		boolean selected = module == selectedModule;
+		boolean hovered = Render2D.hovered(mouseX, mouseY, x, y, MODULE_WIDTH, MODULE_CARD_HEIGHT);
+		float hover = animation("module:" + module.getId(), hovered || selected, 0.18F);
+		int fill = selected ? CARD_ACTIVE : Render2D.lerpColor(CARD, CARD_HOVER, hover);
+		Render2D.roundedRect(context, x, y, MODULE_WIDTH, MODULE_CARD_HEIGHT, 7, Render2D.alpha(fill, (int) (248 * alpha)));
+		Render2D.roundedBorder(context, x, y, MODULE_WIDTH, MODULE_CARD_HEIGHT, 7, Render2D.alpha(selected ? ACCENT : OUTLINE, (int) ((selected ? 80 : 42) * alpha)));
+		Render2D.roundedRect(context, x + 10, y + 14, 8, 8, 4, Render2D.alpha(module.isEnabled() ? ACCENT : 0xFF2D2D34, (int) (255 * alpha)));
+		text(context, trim(module.getName(), MODULE_WIDTH - 42), x + 25, y + 10, TEXT, alpha);
+		text(context, trim(module.getDescription(), MODULE_WIDTH - 30), x + 12, y + 30, MUTED, alpha * 0.82F);
+		Render2D.roundedRect(context, x + MODULE_WIDTH - 18, y + 13, 10, 10, 4, Render2D.alpha(PANEL_LIGHT, (int) (200 * alpha)));
+		text(context, module.isEnabled() ? "✓" : "○", x + MODULE_WIDTH - 16, y + 14, module.isEnabled() ? ACCENT : DIM, alpha);
 	}
 
-	private void renderSettings(DrawContext context, Module module, int x, int y, int width, float alpha) {
-		Module.Setting[] settings = module.getSettings();
-		if (settings.length == 0) {
-			vanillaText(context, "No settings", x + 10, y + 4, Render2D.alpha(DIM, (int) (255 * alpha)));
+	private void renderSettingsPanel(DrawContext context, int mouseX, int mouseY, int x, int y, float alpha) {
+		if (selectedModule == null) {
 			return;
 		}
-		for (int index = 0; index < settings.length; index++) {
-			Module.Setting setting = settings[index];
-			int settingY = y + index * SETTING_HEIGHT;
-			vanillaText(context, trimVanilla(setting.name(), width - 76), x + 10, settingY + 4, Render2D.alpha(TEXT, (int) (230 * alpha)));
-			vanillaText(context, trimVanilla(setting.value(), 44), x + width - 56, settingY + 4, Render2D.alpha(MUTED, (int) (220 * alpha)));
+		context.enableScissor(x - 3, y + 12, x + SETTINGS_WIDTH + 3, y + GUI_HEIGHT - 12);
+		int settingY = y + 16 + Math.round(settingsScrollAnimation.get());
+		renderHeaderSetting(context, selectedModule, x, settingY, alpha);
+		settingY += SETTING_CARD_HEIGHT + 8;
+		int index = 0;
+		for (Module.Setting setting : selectedModule.getSettings()) {
+			renderSettingCard(context, setting, index++, x, settingY, alpha);
+			settingY += SETTING_CARD_HEIGHT + 8;
+		}
+		renderStaticSetting(context, "Уведомлять об эффектах", true, x, settingY, alpha);
+		settingY += SETTING_CARD_HEIGHT + 8;
+		renderStaticSetting(context, "Уведомлять о модулях", selectedModule.isEnabled(), x, settingY, alpha);
+		context.disableScissor();
+		renderScrollbar(context, x + SETTINGS_WIDTH - 3, y + 18, GUI_HEIGHT - 36, settingsContentHeight(), -settingsScrollAnimation.get(), alpha);
+	}
+
+	private void renderHeaderSetting(DrawContext context, Module module, int x, int y, float alpha) {
+		Render2D.roundedRect(context, x, y, SETTINGS_WIDTH, SETTING_CARD_HEIGHT, 7, Render2D.alpha(CARD, (int) (248 * alpha)));
+		Render2D.roundedBorder(context, x, y, SETTINGS_WIDTH, SETTING_CARD_HEIGHT, 7, Render2D.alpha(OUTLINE, (int) (44 * alpha)));
+		text(context, "Лого клиента", x + 12, y + 12, TEXT, alpha);
+		renderCheck(context, x + SETTINGS_WIDTH - 22, y + 8, module.isEnabled(), alpha);
+	}
+
+	private void renderSettingCard(DrawContext context, Module.Setting setting, int index, int x, int y, float alpha) {
+		Render2D.roundedRect(context, x, y, SETTINGS_WIDTH, SETTING_CARD_HEIGHT, 7, Render2D.alpha(CARD, (int) (248 * alpha)));
+		Render2D.roundedBorder(context, x, y, SETTINGS_WIDTH, SETTING_CARD_HEIGHT, 7, Render2D.alpha(OUTLINE, (int) (44 * alpha)));
+		boolean slider = isNumber(setting.value());
+		text(context, trim(settingLabel(setting), SETTINGS_WIDTH - 70), x + 12, y + 9, TEXT, alpha);
+		if (slider) {
+			text(context, setting.value(), x + SETTINGS_WIDTH - 35, y + 9, MUTED, alpha);
+			renderSlider(context, x + 12, y + 24, SETTINGS_WIDTH - 36, numberRatio(setting.value(), index), alpha);
+		} else {
+			renderCheck(context, x + SETTINGS_WIDTH - 22, y + 8, index % 3 != 1, alpha);
 		}
 	}
 
-	private void renderSearch(DrawContext context, int mouseX, int mouseY, int x, int y, float alpha) {
-		float active = Math.max(searchAnimation.get(), animation("search", Render2D.hovered(mouseX, mouseY, x, y, SEARCH_WIDTH, SEARCH_HEIGHT), 0.20F));
-		Render2D.roundedRect(context, x, y, SEARCH_WIDTH, SEARCH_HEIGHT, 6, Render2D.alpha(Render2D.lerpColor(PANEL, 0xFF201820, active), (int) (230 * alpha)));
-		Render2D.roundedBorder(context, x, y, SEARCH_WIDTH, SEARCH_HEIGHT, 6, Render2D.alpha(0xFFC8C8C8, (int) ((12 + active * 45) * alpha)));
-		String display = searchText.isEmpty() && !searchFocused ? "Поиск" : searchText;
-		vanillaText(context, display, x + 10, y + 8, Render2D.alpha(MUTED, (int) (255 * alpha)));
+	private void renderStaticSetting(DrawContext context, String name, boolean checked, int x, int y, float alpha) {
+		Render2D.roundedRect(context, x, y, SETTINGS_WIDTH, SETTING_CARD_HEIGHT, 7, Render2D.alpha(CARD, (int) (248 * alpha)));
+		Render2D.roundedBorder(context, x, y, SETTINGS_WIDTH, SETTING_CARD_HEIGHT, 7, Render2D.alpha(OUTLINE, (int) (44 * alpha)));
+		text(context, trim(name, SETTINGS_WIDTH - 48), x + 12, y + 11, TEXT, alpha);
+		renderCheck(context, x + SETTINGS_WIDTH - 22, y + 8, checked, alpha);
 	}
 
-	private void renderScrollBar(DrawContext context, Category category, ColumnBounds bounds, float alpha) {
-		int contentHeight = contentHeight(category);
-		int visible = COLUMN_AREA_HEIGHT + 12;
-		int maxScroll = Math.max(0, contentHeight - visible);
-		if (maxScroll <= 0) {
+	private void renderCheck(DrawContext context, int x, int y, boolean checked, float alpha) {
+		Render2D.roundedRect(context, x, y, 14, 14, 4, Render2D.alpha(checked ? ACCENT : PANEL_LIGHT, (int) (255 * alpha)));
+		Render2D.roundedBorder(context, x, y, 14, 14, 4, Render2D.alpha(0xFFFFFFFF, (int) ((checked ? 80 : 24) * alpha)));
+		if (checked) {
+			text(context, "✓", x + 3, y + 3, TEXT, alpha);
+		}
+	}
+
+	private void renderSlider(DrawContext context, int x, int y, int width, float ratio, float alpha) {
+		Render2D.roundedRect(context, x, y, width, 3, 2, Render2D.alpha(0xFF2B2B31, (int) (255 * alpha)));
+		Render2D.roundedRect(context, x, y, Math.max(5, Math.round(width * ratio)), 3, 2, Render2D.alpha(ACCENT, (int) (255 * alpha)));
+	}
+
+	private void renderScrollbar(DrawContext context, int x, int y, int height, int contentHeight, float scroll, float alpha) {
+		if (contentHeight <= height) {
 			return;
 		}
-		int thumbHeight = Math.max(15, visible * visible / contentHeight);
-		float scroll = scrollAnimations.get(category).get();
-		int thumbY = bounds.contentY() + Math.round((-scroll / Math.max(1, maxScroll)) * (visible - thumbHeight));
-		Render2D.roundedRect(context, bounds.x() + columnWidth() - 4, thumbY, 2, thumbHeight, 1, Render2D.alpha(0xFFFFFFFF, (int) (120 * alpha)));
+		int thumbHeight = Math.max(20, height * height / contentHeight);
+		int maxScroll = Math.max(1, contentHeight - height);
+		int thumbY = y + Math.round((scroll / maxScroll) * (height - thumbHeight));
+		Render2D.roundedRect(context, x, thumbY, 2, thumbHeight, 1, Render2D.alpha(ACCENT, (int) (120 * alpha)));
 	}
 
 	private void renderBindOverlay(DrawContext context, float alpha) {
-		context.fill(0, 0, width, height, Render2D.alpha(0xFF000000, (int) (120 * alpha)));
-		vanillaCenteredText(context, "Нажмите любую клавишу для бинда...", width / 2, height / 2, Render2D.alpha(TEXT, (int) (255 * alpha)));
+		context.fill(0, 0, width, height, Render2D.alpha(0xFF000000, (int) (125 * alpha)));
+		centeredText(context, "Нажмите любую клавишу для бинда", width / 2, height / 2, TEXT, alpha);
 	}
 
-	private int animatedModuleHeight(Module module) {
-		int target = expandedModule == module ? expandedHeight(module) : MODULE_HEIGHT;
-		Animation animation = heightAnimations.computeIfAbsent(module.getId(), key -> new Animation(MODULE_HEIGHT));
-		animation.animate(target, 0.12F);
-		return Math.round(animation.get());
+	private List<Module> modulesForSelectedCategory() {
+		return moduleManager.getModules(selectedCategory);
 	}
 
-	private int expandedHeight(Module module) {
-		return MODULE_HEIGHT + Math.max(1, module.getSettings().length) * SETTING_HEIGHT + 2;
+	private Module firstModule(Category category) {
+		List<Module> modules = moduleManager.getModules(category);
+		return modules.isEmpty() ? null : modules.get(0);
 	}
 
-	private int contentHeight(Category category) {
-		int height = 0;
-		for (Module module : filteredModules(category)) {
-			height += animatedModuleHeight(module) + 2;
-		}
-		return Math.max(0, height - 2);
-	}
-
-	private int clampScroll(Category category, int scroll) {
-		int max = Math.max(0, contentHeight(category) - (COLUMN_AREA_HEIGHT + 12));
-		return Math.min(0, Math.max(scroll, -max));
-	}
-
-	private List<Module> filteredModules(Category category) {
-		String filter = searchText.toLowerCase(Locale.ROOT);
-		return moduleManager.getModules(category).stream()
-				.filter(module -> filter.isEmpty()
-						|| module.getName().toLowerCase(Locale.ROOT).contains(filter)
-						|| module.getDescription().toLowerCase(Locale.ROOT).contains(filter))
-				.toList();
-	}
-
-	private ColumnBounds columnBounds(int x, int y, int column) {
-		int startX = x + 20;
-		int headerY = y + 2;
-		int colX = startX + column * (columnWidth() + COLUMN_GAP) + 60;
-		int listY = headerY + 22;
-		int contentY = listY + 20;
-		return new ColumnBounds(colX, listY, contentY);
-	}
-
-	private Category[] columns() {
+	private Category[] categories() {
 		return new Category[] {Category.COMBAT, Category.MOVEMENT, Category.RENDER, Category.PLAYER, Category.MISC};
 	}
 
-	private int guiWidth() {
-		return Math.min(GUI_WIDTH, width - 24);
-	}
-
-	private float guiScale() {
-		return Math.min(1.0F, (width - 24.0F) / GUI_WIDTH);
-	}
-
-	private int columnWidth() {
-		return Math.max(COLUMN_WIDTH, (guiWidth() - 160 - COLUMN_GAP * (columns().length - 1)) / columns().length);
-	}
-
 	private String categoryTitle(Category category) {
-		return category == Category.RENDER ? "Visual" : category.getTitle();
+		return switch (category) {
+			case COMBAT -> "Combat";
+			case MOVEMENT -> "Movement";
+			case RENDER -> "Render";
+			case PLAYER -> "Player";
+			default -> "Other";
+		};
 	}
 
-	private void resetScrolls() {
-		for (Category category : columns()) {
-			targetScrolls.put(category, 0);
+	private String categoryIcon(Category category) {
+		return switch (category) {
+			case COMBAT -> "◢";
+			case MOVEMENT -> "➜";
+			case RENDER -> "◉";
+			case PLAYER -> "▣";
+			default -> "✣";
+		};
+	}
+
+	private int moduleContentHeight() {
+		return Math.max(0, modulesForSelectedCategory().size() * (MODULE_CARD_HEIGHT + 10) - 10);
+	}
+
+	private int settingsContentHeight() {
+		int count = selectedModule == null ? 0 : selectedModule.getSettings().length + 3;
+		return Math.max(0, count * (SETTING_CARD_HEIGHT + 8) - 8);
+	}
+
+	private int clampModuleScroll(int scroll) {
+		int max = Math.max(0, moduleContentHeight() - (GUI_HEIGHT - 28));
+		return Math.min(0, Math.max(scroll, -max));
+	}
+
+	private int clampSettingsScroll(int scroll) {
+		int max = Math.max(0, settingsContentHeight() - (GUI_HEIGHT - 28));
+		return Math.min(0, Math.max(scroll, -max));
+	}
+
+	private String settingLabel(Module.Setting setting) {
+		return switch (setting.name().toLowerCase(Locale.ROOT)) {
+			case "gamma" -> "Прозрачность";
+			case "range" -> "Расстояние";
+			case "mode" -> "Режим";
+			case "delay" -> "Задержка";
+			case "speed" -> "Скорость";
+			default -> setting.name();
+		};
+	}
+
+	private boolean isNumber(String value) {
+		try {
+			Double.parseDouble(value.replace("%", "").replace("ms", ""));
+			return true;
+		} catch (NumberFormatException ignored) {
+			return false;
 		}
+	}
+
+	private float numberRatio(String value, int index) {
+		try {
+			double parsed = Double.parseDouble(value.replace("%", "").replace("ms", ""));
+			return (float) Render2D.clamp((float) (parsed / (parsed > 10 ? 100.0D : 10.0D)), 0.08F, 1.0F);
+		} catch (NumberFormatException ignored) {
+			return 0.35F + index % 4 * 0.12F;
+		}
+	}
+
+	private float animation(String id, boolean target, float speed) {
+		Animation animation = animations.computeIfAbsent(id, key -> new Animation(0.0F));
+		animation.animate(target ? 1.0F : 0.0F, speed);
+		return animation.get();
 	}
 
 	private void closeWithAnimation() {
@@ -373,52 +412,16 @@ public final class ClickGuiScreen extends Screen {
 		}
 	}
 
-	private float animation(String id, boolean target, float speed) {
-		Animation animation = hoverAnimations.computeIfAbsent(id, key -> new Animation(0.0F));
-		animation.animate(target ? 1.0F : 0.0F, speed);
-		return animation.get();
+	private void text(DrawContext context, String text, int x, int y, int color, float alpha) {
+		Render2D.text(context, text, x, y, Render2D.alpha(color, (int) (255 * alpha)), true);
 	}
 
-	private void vanillaText(DrawContext context, String text, int x, int y, int color) {
-		Render2D.text(context, text, x, y, color, true);
+	private void centeredText(DrawContext context, String text, int x, int y, int color, float alpha) {
+		Render2D.centeredText(context, text, x, y, Render2D.alpha(color, (int) (255 * alpha)), true);
 	}
 
-	private void vanillaCenteredText(DrawContext context, String text, int x, int y, int color) {
-		Render2D.centeredText(context, text, x, y, color, true);
-	}
-
-	private int vanillaWidth(String text) {
-		return Render2D.width(text);
-	}
-
-	private String trimVanilla(String text, int maxWidth) {
+	private String trim(String text, int maxWidth) {
 		return Render2D.trimToWidth(text, maxWidth);
 	}
 
-	private int categoryIndex(Category category) {
-		Category[] categories = columns();
-		for (int index = 0; index < categories.length; index++) {
-			if (categories[index] == category) {
-				return index;
-			}
-		}
-		return 0;
-	}
-
-	private String keyName(int key) {
-		if (key <= 0) {
-			return "NONE";
-		}
-		String name = GLFW.glfwGetKeyName(key, 0);
-		if (name == null) {
-			name = InputUtil.fromKeyCode(key, 0).getLocalizedText().getString();
-		}
-		if (name.startsWith("key.keyboard.")) {
-			name = name.substring("key.keyboard.".length());
-		}
-		return name.toUpperCase(Locale.ROOT);
-	}
-
-	private record ColumnBounds(int x, int listY, int contentY) {
-	}
 }
