@@ -16,7 +16,7 @@ public final class AuraModule extends Module {
 	private LivingEntity target;
 
 	public AuraModule(ClientConfig config) {
-		super("aura", "Aura", "Nearest melee target", Category.COMBAT, false, config);
+		super("aura", "Aura", "Nearest melee target", Category.COMBAT, false, config, new Setting("Range", "3.8"), new Setting("Mode", "Single"), new Setting("Rotate", "Silent"));
 	}
 
 	@Override

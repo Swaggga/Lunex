@@ -11,6 +11,7 @@ public abstract class Module {
 	private final Category category;
 	private final boolean defaultEnabled;
 	private final int defaultKeybind;
+	private final Setting[] settings;
 	private final ClientConfig config;
 	private int keybind;
 	private boolean enabled;
@@ -20,12 +21,21 @@ public abstract class Module {
 	}
 
 	protected Module(String id, String name, String description, Category category, boolean defaultEnabled, int defaultKeybind, ClientConfig config) {
+		this(id, name, description, category, defaultEnabled, defaultKeybind, config, new Setting[0]);
+	}
+
+	protected Module(String id, String name, String description, Category category, boolean defaultEnabled, ClientConfig config, Setting... settings) {
+		this(id, name, description, category, defaultEnabled, 0, config, settings);
+	}
+
+	protected Module(String id, String name, String description, Category category, boolean defaultEnabled, int defaultKeybind, ClientConfig config, Setting... settings) {
 		this.id = id;
 		this.name = name;
 		this.description = description;
 		this.category = category;
 		this.defaultEnabled = defaultEnabled;
 		this.defaultKeybind = defaultKeybind;
+		this.settings = settings;
 		this.config = config;
 		this.enabled = defaultEnabled;
 		this.keybind = defaultKeybind;
@@ -96,5 +106,12 @@ public abstract class Module {
 	public void setKeybind(int keybind) {
 		this.keybind = keybind;
 		config.setModuleKeybind(id, keybind);
+	}
+
+	public Setting[] getSettings() {
+		return settings;
+	}
+
+	public record Setting(String name, String value) {
 	}
 }

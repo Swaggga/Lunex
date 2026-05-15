@@ -9,6 +9,7 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 
+
 public final class Render2D {
 	private static final Identifier LUNEX_FONT = Identifier.of(Lunex.MOD_ID, "lunex");
 
@@ -111,39 +112,50 @@ public final class Render2D {
 	}
 
 	public static void text(DrawContext context, String text, int x, int y, int color) {
-		text(context, text, x, y, color, false);
+		text(context, text, x, y, color, true);
 	}
 
 	public static void text(DrawContext context, String text, int x, int y, int color, boolean shadow) {
 		TextRenderer renderer = MinecraftClient.getInstance().textRenderer;
-		context.drawText(renderer, lunexText(sanitize(text)), x, y, color, shadow);
+		context.drawText(renderer, lunexText(text), x, y, color, shadow);
 	}
 
 	public static void centeredText(DrawContext context, String text, int x, int y, int color) {
-		text(context, text, x - width(text) / 2, y, color);
+		centeredText(context, text, x, y, color, true);
+	}
+
+	public static void centeredText(DrawContext context, String text, int x, int y, int color, boolean shadow) {
+		text(context, text, x - width(text) / 2, y, color, shadow);
 	}
 
 	public static void scaledText(DrawContext context, String text, int x, int y, float scale, int color) {
+		scaledText(context, text, x, y, scale, color, true);
+	}
+
+	public static void scaledText(DrawContext context, String text, int x, int y, float scale, int color, boolean shadow) {
 		MatrixStack matrices = context.getMatrices();
 		matrices.push();
 		matrices.translate(x, y, 0.0F);
 		matrices.scale(scale, scale, 1.0F);
-		context.drawText(MinecraftClient.getInstance().textRenderer, lunexText(sanitize(text)), 0, 0, color, false);
+		context.drawText(MinecraftClient.getInstance().textRenderer, lunexText(text), 0, 0, color, shadow);
 		matrices.pop();
 	}
 
 	public static int width(String text) {
-		return MinecraftClient.getInstance().textRenderer.getWidth(lunexText(sanitize(text)));
+		return MinecraftClient.getInstance().textRenderer.getWidth(lunexText(text));
 	}
 
 	public static String trimToWidth(String text, int maxWidth) {
-		String sanitized = sanitize(text);
-		String value = sanitized;
+		String value = text;
 		while (!value.isEmpty() && width(value + "...") > maxWidth) {
-			value = value.substring(0, value.length() - 1);
+			value = value.substring(0, value.offsetByCodePoints(0, value.codePointCount(0, value.length()) - 1));
 		}
 
-		return value.length() == sanitized.length() ? sanitized : value + "...";
+		return value.length() == text.length() ? text : value + "...";
+	}
+
+	private static Text lunexText(String text) {
+		return Text.literal(text).styled(style -> style.withFont(LUNEX_FONT));
 	}
 
 	public static void line(DrawContext context, int x1, int y1, int x2, int y2, int color) {
@@ -176,24 +188,6 @@ public final class Render2D {
 
 	public static float clamp(float value, float min, float max) {
 		return Math.max(min, Math.min(max, value));
-	}
-
-	private static Text lunexText(String text) {
-		return Text.literal(text).styled(style -> style.withFont(LUNEX_FONT));
-	}
-
-	private static String sanitize(String text) {
-		StringBuilder builder = new StringBuilder(text.length());
-		for (int index = 0; index < text.length(); index++) {
-			char character = text.charAt(index);
-			if ((character >= 32 && character <= 126) || character == '\u2026') {
-				builder.append(character);
-			} else {
-				builder.append('?');
-			}
-		}
-
-		return builder.toString();
 	}
 
 	private static int cornerInset(int position, int length, int radius) {
